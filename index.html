@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lịch thi → Google Calendar</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1d2330;--mut:#6b7385;--bd:#e1e4ea;--ac:#2563eb;--acf:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171d;--card:#1d222b;--fg:#e8eaf0;--mut:#99a1b3;--bd:#2c3340;--ac:#5b8cff;--acf:#0b1220}}
+:root[data-theme="dark"]{--bg:#14171d;--card:#1d222b;--fg:#e8eaf0;--mut:#99a1b3;--bd:#2c3340;--ac:#5b8cff;--acf:#0b1220}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 16px}
+textarea{width:100%;min-height:150px;box-sizing:border-box;padding:10px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--fg);font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+button,a.b{border:1px solid var(--bd);background:var(--card);color:var(--fg);padding:8px 12px;border-radius:8px;font:inherit;cursor:pointer;text-decoration:none;display:inline-block}
+button.p,a.p{background:var(--ac);color:var(--acf);border-color:var(--ac)}
+.ev{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin:8px 0;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.ev b{display:block}.ev span{color:var(--mut);font-size:13px}
+label.o{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:13px}
+input[type=number]{width:64px;padding:4px;border:1px solid var(--bd);border-radius:6px;background:var(--card);color:var(--fg)}
+.sw{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 10px}.sw span.l{color:var(--mut);font-size:13px}.sw button.c{width:26px;height:26px;padding:0;border-radius:50%;border:2px solid transparent}.sw button.on{outline:2px solid var(--fg);outline-offset:2px}.sw button.a{padding:4px 10px;font-size:13px}.sw button.a.on{outline:2px solid var(--fg);outline-offset:2px}
+#msg{color:var(--mut);font-size:13px;margin:6px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Lịch thi → Google Calendar</h1>
+<p class="s">Copy các dòng trong bảng lịch thi rồi dán vào ô bên dưới.</p>
+<textarea id="in" placeholder="20261  MT1003 - Giải tích 1  L02_D_Ktr  2026-10-13  GK  BK-CS2  H3-305  3  09g00  50  ..."></textarea>
+<div class="row">
+  <button class="p" id="go">Phân tích</button>
+  <button id="demo">Dùng dữ liệu mẫu</button>
+  <label class="o">Nhắc trước <input type="number" id="rem" value="60" min="0"> phút</label>
+</div>
+<div class="sw" id="sw"><span class="l">Màu:</span></div>
+<div id="msg"></div>
+<div id="out"></div>
+<div class="row" id="bulk" hidden>
+  <button class="p" id="all">Thêm tất cả vào Google Calendar (1 lần bấm)</button>
+  <button class="" id="dl">Tải file thêm tất cả (.csv)</button>
+  <button id="cp">Sao chép nội dung .ics</button>
+</div>
+<p class="s" id="hint" hidden>Thêm tất cả một lần: bấm “Tải file thêm tất cả”, rồi mở calendar.google.com → Cài đặt (bánh răng) → Nhập &amp; xuất → chọn file lich-thi.csv → Nhập. Tất cả môn sẽ vào lịch cùng lúc.</p>
+</main>
+<script>
+var DEMO = [
+"20261\tMT1003 - Giải tích 1\tL02_D_Ktr\t2026-10-13\tGK\tBK-CS2\tH3-305\t3\t09g00\t50\t2026-09-21 14:09:00",
+"20261\tPH1003 - Vật lý 1\tL01_C_Ktr\t2026-10-14\tGK\tBK-CS2\tH6-413\t4\t09g00\t60\t2026-09-21 14:09:00",
+"20261\tPH1003 - Vật lý 1\tL01_C_Thi\t2026-12-14\tCK\tBK-CS2\tH6-110\t2\t09g30\t80\t2026-10-23 10:10:00",
+"20261\tLA1003 - Anh văn 1\tL01_B_Thi\t2026-12-16\tCK\tBK-CS2\tH6-313\t4\t09g30\t50\t2026-10-23 10:10:00",
+"20261\tMT1003 - Giải tích 1\tL02_D_Thi\t2026-12-17\tCK\tBK-CS2\tH3-302\t5\t09g30\t70\t2026-10-23 10:10:00",
+"20261\tCH1003 - Hóa đại cương\tL08_C_Thi\t2026-12-18\tCK\tBK-CS2\tH6-413\t6\t09g30\t70\t2026-10-23 10:10:00",
+"20261\tLA1003 - Anh văn 1\tL01_B_Ktr\t2026-10-14\tGK\tBK-CS2\tH6-313\t4\t15g00\t50\t2026-09-21 14:09:00",
+"20261\tCNTTCB - Kỹ năng ứng dụng Công nghệ Thông tin cơ bản\tL21_C_Thi\t2026-11-07\tCK\tBK-CS2\tH6-702\t7\t15g00\t60\t2026-10-23 10:10:00"
+].join("\n");
+var RE=/^\s*(\d{5})\s+(.+?)\s+(\S+_\S+)\s+(\d{4})-(\d{2})-(\d{2})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d)\s+(\d{1,2})g(\d{2})\s+(\d+)/;
+var events=[];
+function p2(n){return String(n).padStart(2,"0")}
+function ap(x){var h=x.getUTCHours();return (h%12||12)+":"+p2(x.getUTCMinutes())+" "+(h<12?"AM":"PM")}
+function q(v){return '"'+String(v).replace(/"/g,'""')+'"'}
+function csv(){
+  var L=["Subject,Start Date,Start Time,End Date,End Time,All Day Event,Description,Location,Private"];
+  events.forEach(function(e){L.push([q(e.title),e.csv[0],e.csv[1],e.csv[0],e.csv[2],"False",q(e.desc),q(e.loc),"False"].join(","))});
+  return "\uFEFF"+L.join("\r\n");
+}
+function short(n,k,room){var i=n.indexOf(" - "),code=i>0?n.slice(0,i).trim():n.trim(),name=i>0?n.slice(i+3).trim():n.trim();if(name.length>20)name=code;return k+" "+name+" | "+room}
+function parse(t){
+  var r=[],bad=0;
+  t.split(/\r?\n/).forEach(function(l){
+    if(!l.trim())return;
+    var m=l.match(RE);
+    if(!m){bad++;return}
+    var y=+m[4],mo=+m[5],d=+m[6],h=+m[11],mi=+m[12],dur=+m[13];
+    var s=new Date(Date.UTC(y,mo-1,d,h,mi)),e=new Date(s.getTime()+dur*60000);
+    function f(x){return x.getUTCFullYear()+p2(x.getUTCMonth()+1)+p2(x.getUTCDate())+"T"+p2(x.getUTCHours())+p2(x.getUTCMinutes())+"00"}
+    var kind=m[7]==="GK"?"Giữa kỳ":m[7]==="CK"?"Cuối kỳ":m[7];
+    r.push({title:short(m[2],m[7],m[9]),code:m[2].split(" - ")[0].trim(),start:f(s),end:f(e),
+      loc:m[8]+" - phòng "+m[9],
+      desc:"Phòng: "+m[9]+" ("+m[8]+")\nGiờ thi: "+p2(s.getUTCHours())+":"+p2(s.getUTCMinutes())+" - "+p2(e.getUTCHours())+":"+p2(e.getUTCMinutes())+" ("+dur+" phút)\nNhóm lớp: "+m[3]+"\nHọc kỳ: "+m[1],
+      label:p2(d)+"/"+p2(mo)+"/"+y+" "+p2(h)+":"+p2(mi)+" – "+dur+" phút – "+m[8]+" "+m[9],ts:s.getTime(),csv:[p2(mo)+"/"+p2(d)+"/"+y,ap(s),ap(e)]});
+  });
+  r.sort(function(a,b){return a.ts-b.ts});
+  return {r:r,bad:bad};
+}
+function gcal(e){
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(e.title)+
+   "&dates="+e.start+"/"+e.end+"&ctz=Asia/Ho_Chi_Minh&location="+encodeURIComponent(e.loc)+"&details="+encodeURIComponent(e.desc);
+}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function render(){
+  var res=parse(document.getElementById("in").value);
+  events=res.r;
+  var out=document.getElementById("out");
+  out.innerHTML=events.map(function(e){
+    return '<div class="ev" style="border-left:6px solid '+hexOf(colorId(e))+'"><div><b>'+esc(e.title)+'</b><span>'+esc(e.label)+'</span></div>'+
+      '<a class="b p" target="_blank" rel="noopener" href="'+gcal(e)+'">Thêm vào Google Calendar</a></div>';
+  }).join("");
+  document.getElementById("msg").textContent=events.length?("Tìm thấy "+events.length+" lịch thi."+(res.bad?" Bỏ qua "+res.bad+" dòng không đọc được.":"")):"Không đọc được dòng nào. Hãy copy đúng các dòng của bảng.";
+  document.getElementById("bulk").hidden=!events.length;
+  document.getElementById("hint").hidden=!events.length;
+}
+function ics(){
+  var rem=Math.max(0,+document.getElementById("rem").value||0);
+  var L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LichThi//VI","CALSCALE:GREGORIAN"];
+  events.forEach(function(e,i){
+    L.push("BEGIN:VEVENT","UID:thi-"+e.start+"-"+i+"@lichthi","DTSTAMP:"+new Date().toISOString().replace(/[-:]|\.\d+/g,""),
+      "DTSTART;TZID=Asia/Ho_Chi_Minh:"+e.start,"DTEND;TZID=Asia/Ho_Chi_Minh:"+e.end,
+      "SUMMARY:"+e.title.replace(/,/g,"\\,"),"LOCATION:"+e.loc,"DESCRIPTION:"+e.desc.replace(/\n/g,"\\n"));
+    if(rem>0)L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:Sắp thi","TRIGGER:-PT"+rem+"M","END:VALARM");
+    L.push("END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  return L.join("\r\n");
+}
+var PAL=[["1","#7986cb"],["2","#33b679"],["3","#8e24aa"],["4","#e67c73"],["5","#f6bf26"],["6","#f4511e"],["7","#039be5"],["8","#616161"],["9","#3f51b5"],["10","#0b8043"],["11","#d50000"]];
+var AUTO=["9","11","10","6","3","7","4","5"];
+var colorSel="auto";
+function hexOf(id){for(var i=0;i<PAL.length;i++)if(PAL[i][0]===id)return PAL[i][1];return "#3f51b5"}
+var courseColor={};
+function colorId(e){
+  if(colorSel!=="auto")return colorSel;
+  if(!courseColor[e.code]){
+    var used=Object.keys(courseColor).map(function(k){return courseColor[k]});
+    var pool=PAL.map(function(c){return c[0]}).filter(function(id){return used.indexOf(id)<0});
+    if(!pool.length)pool=PAL.map(function(c){return c[0]});
+    courseColor[e.code]=pool[Math.floor(Math.random()*pool.length)];
+  }
+  return courseColor[e.code];
+}
+function buildSw(){
+  var box=document.getElementById("sw");
+  box.innerHTML='<span class="l">Màu:</span>';
+  var a=document.createElement("button");a.className="a"+(colorSel==="auto"?" on":"");a.textContent="🎲 Ngẫu nhiên";
+  a.onclick=function(){colorSel="auto";courseColor={};buildSw();if(events.length)render()};box.appendChild(a);
+  PAL.forEach(function(c){
+    var b=document.createElement("button");b.className="c"+(colorSel===c[0]?" on":"");b.style.background=c[1];b.setAttribute("aria-label","Màu "+c[0]);
+    b.onclick=function(){colorSel=c[0];buildSw();if(events.length)render()};box.appendChild(b);
+  });
+}
+buildSw();
+document.getElementById("go").onclick=render;
+document.getElementById("demo").onclick=function(){document.getElementById("in").value=DEMO;render()};
+document.getElementById("dl").onclick=async function(){
+  var m=document.getElementById("msg");
+  if(!(window.claude&&window.claude.use)){
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([csv()],{type:"text/csv;charset=utf-8"}));
+    a.download="lich-thi.csv";document.body.appendChild(a);a.click();a.remove();
+    m.textContent="Đã tải lich-thi.csv. Giờ vào calendar.google.com → Cài đặt → Nhập & xuất để nhập.";
+    return;
+  }
+  try{
+    var d=await window.claude.use("downloads");
+    if(!d){m.textContent="Không tải được file ở đây. Hãy dùng nút Thêm vào Google Calendar ở từng môn.";return}
+    await d.save({filename:"lich-thi.csv",data:csv()});
+    m.textContent="Đã lưu lich-thi.csv. Giờ vào calendar.google.com → Cài đặt → Nhập & xuất để nhập.";
+  }catch(x){
+    m.textContent=(x&&x.code==="declined")?"Bạn đã hủy tải file.":"Không tải được file ở đây. Hãy dùng nút Thêm vào Google Calendar ở từng môn.";
+  }
+};
+document.getElementById("cp").onclick=function(){
+  var t=ics(),m=document.getElementById("msg");
+  function ok(){m.textContent="Đã sao chép. Dán vào Notepad và lưu thành lich-thi.ics."}
+  function fb(){var ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");ok()}catch(x){m.textContent="Không sao chép được."}ta.remove()}
+  try{navigator.clipboard.writeText(t).then(ok,fb)}catch(x){fb()}
+};
+
+// ===== THÊM TẤT CẢ BẰNG 1 LẦN BẤM (Google Calendar API) =====
+// Dán OAuth Client ID của bạn vào đây (xem hướng dẫn trong chat)
+var CLIENT_ID="DAN_CLIENT_ID_VAO_DAY.apps.googleusercontent.com";
+// Chưa điền CLIENT_ID thì tự ẩn nút 1 lần bấm, trang vẫn dùng được bằng các cách còn lại
+if(CLIENT_ID.indexOf("DAN_CLIENT_ID")===0)document.getElementById("all").hidden=true;
+(function(){var g=document.createElement("script");g.src="https://accounts.google.com/gsi/client";g.async=true;document.head.appendChild(g)})();
+function iso(x){return x.slice(0,4)+"-"+x.slice(4,6)+"-"+x.slice(6,8)+"T"+x.slice(9,11)+":"+x.slice(11,13)+":00"}
+document.getElementById("all").onclick=function(){
+  var m=document.getElementById("msg");
+  if(CLIENT_ID.indexOf("DAN_CLIENT_ID")===0){m.textContent="Bạn chưa điền CLIENT_ID trong code (tìm chữ CLIENT_ID).";return}
+  if(!(window.google&&google.accounts&&google.accounts.oauth2)){m.textContent="Chưa tải được thư viện đăng nhập Google. Kiểm tra mạng rồi thử lại.";return}
+  var rem=Math.max(0,+document.getElementById("rem").value||0);
+  var tc=google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,
+    scope:"https://www.googleapis.com/auth/calendar.events",
+    callback:async function(r){
+      if(r.error){m.textContent="Đăng nhập thất bại: "+r.error;return}
+      var ok=0,fail=0;
+      for(var i=0;i<events.length;i++){
+        var e=events[i];
+        try{
+          var res=await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events",{
+            method:"POST",
+            headers:{"Authorization":"Bearer "+r.access_token,"Content-Type":"application/json"},
+            body:JSON.stringify({summary:e.title,location:e.loc,description:e.desc,
+              start:{dateTime:iso(e.start),timeZone:"Asia/Ho_Chi_Minh"},
+              end:{dateTime:iso(e.end),timeZone:"Asia/Ho_Chi_Minh"},
+              colorId:colorId(e),reminders:{useDefault:false,overrides:rem>0?[{method:"popup",minutes:rem}]:[]}})
+          });
+          if(res.ok)ok++;else fail++;
+        }catch(x){fail++}
+      }
+      m.textContent="Xong: đã thêm "+ok+"/"+events.length+" lịch thi."+(fail?" Lỗi "+fail+" lịch.":"")+" (Đừng bấm lần nữa kẻo bị trùng.)";
+    }
+  });
+  tc.requestAccessToken({prompt:""});
+};
+</script>
+</body>
+</html>
